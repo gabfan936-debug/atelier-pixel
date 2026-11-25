@@ -254,10 +254,10 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
          if(!confirm('Supprimer votre avis définitivement ?'))return;
          remove.disabled=true;remove.textContent='Suppression…';
          try{
-           const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/delete_own_atelier_review',{method:'POST',headers:apiHeaders,body:JSON.stringify({p_review_id:review.id,p_token:ownerToken})});
+           const response=await fetch(SUPABASE_URL+'/rest/v1/atelier_reviews?id=eq.'+encodeURIComponent(review.id),{method:'DELETE',headers:{...apiHeaders,'x-review-owner-token':ownerToken,Prefer:'return=representation'}});
            if(!response.ok)throw new Error('La suppression a échoué ('+response.status+').');
            const deleted=await response.json();
-           if(deleted!==true)throw new Error('Cet avis ne peut pas être supprimé depuis ce navigateur.');
+           if(!Array.isArray(deleted)||!deleted.length)throw new Error('Cet avis ne peut pas être supprimé depuis ce navigateur.');
            removeOwnReviewToken(review.id);await loadReviews();
            reviewStatus.textContent='Votre avis a bien été supprimé.';reviewStatus.className='status success';
          }catch(error){

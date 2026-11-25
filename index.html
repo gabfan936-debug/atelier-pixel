@@ -121,9 +121,9 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 <button type="button" id="adminToggle">Espace administrateur</button>
 <div class="admin-review-panel" id="adminPanel" hidden>
 <form id="adminLoginForm">
-<label for="adminEmail">Connexion réservée à l’administrateur</label>
-<input id="adminEmail" type="email" value="gabfan936@gmail.com" autocomplete="email" required>
-<button class="btn btn-green" type="submit" id="adminLoginButton">Recevoir mon lien de connexion</button>
+<label for="adminPassword">Mot de passe administrateur</label>
+<input id="adminPassword" type="password" autocomplete="current-password" minlength="8" placeholder="Ton mot de passe" required>
+<button class="btn btn-green" type="submit" id="adminLoginButton">Se connecter</button>
 </form>
 <div class="admin-review-message" id="adminMessage" role="status" aria-live="polite"></div>
 <div id="adminLogged" hidden>
@@ -239,11 +239,11 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
    document.getElementById('adminLoginForm').addEventListener('submit',async event=>{
      event.preventDefault();setAdminMessage('Envoi du lien de connexion…');
      if(!adminClient){setAdminMessage('Le module de connexion ne s’est pas chargé. Actualise la page.',true);return;}
-     const email=document.getElementById('adminEmail').value.trim().toLowerCase();
-     if(email!=='gabfan936@gmail.com'){setAdminMessage('Cette adresse n’est pas autorisée.',true);return;}
-     const {error}=await adminClient.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+window.location.pathname+'#avis'}});
-     if(error){setAdminMessage('Connexion impossible : '+error.message,true);return;}
-     setAdminMessage('Lien envoyé à gabfan936@gmail.com. Ouvre le mail sur cet appareil puis clique sur le lien.');
+     const password=document.getElementById('adminPassword').value;
+     const {error}=await adminClient.auth.signInWithPassword({email:'gabfan936@gmail.com',password});
+     if(error){setAdminMessage('Mot de passe incorrect ou compte administrateur non configuré.',true);return;}
+     document.getElementById('adminPassword').value='';
+     setAdminMessage('Connexion réussie.');
    });
    document.getElementById('adminLogout').addEventListener('click',async()=>{
      if(adminClient) await adminClient.auth.signOut();

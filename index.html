@@ -294,7 +294,7 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
    try{
      const ownerToken=createReviewToken();
      const owner_token_hash=await hashReviewToken(ownerToken);
-     const res=await fetch(SUPABASE_URL+'/rest/v1/atelier_reviews',{method:'POST',headers:{...apiHeaders,Prefer:'return=representation'},body:JSON.stringify({display_name,rating,message,owner_token_hash})});
+     const res=await fetch(SUPABASE_URL+'/rest/v1/atelier_reviews?select=id',{method:'POST',headers:{...apiHeaders,Prefer:'return=representation'},body:JSON.stringify({display_name,rating,message,owner_token_hash})});
      if(!res.ok){
        let detail='Erreur lors de la publication.';
        try{const payload=await res.json();detail=payload.message||payload.hint||detail;}catch(_){}

@@ -55,6 +55,18 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 #reviewStatus.success{color:var(--green)}
 #reviewStatus.error{color:#ff9b90}
 @media(max-width:760px){.reviews-wrap{grid-template-columns:1fr}.reviews-intro,.reviews-form{padding:28px 22px}.reviews-form{border-left:0;border-top:1px solid var(--line)}.reviews-list{max-height:520px}}
+
+/* Espace administrateur des avis */
+.admin-review-tools{margin:18px 0 22px;padding:16px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025)}
+.admin-review-tools>button,.review-delete{border:1px solid var(--green);background:transparent;color:var(--green);border-radius:8px;padding:9px 13px;font:inherit;font-size:.78rem;cursor:pointer}
+.admin-review-tools>button:hover,.review-delete:hover{background:var(--green);color:#07100b}
+.admin-review-panel{margin-top:14px;display:grid;gap:10px}
+.admin-review-panel[hidden]{display:none}
+.admin-review-panel input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:#101512;color:inherit;font:inherit}
+.admin-review-panel button{justify-self:start}
+.admin-review-message{font-size:.8rem;color:var(--green);line-height:1.5}
+.admin-review-message.error{color:#ff9b90}
+.review-delete{margin-top:12px;border-color:#a64d4d;color:#ff9b90;font-size:.72rem;padding:7px 10px}
 </style>
 </head>
 <body>
@@ -105,6 +117,21 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 <div class="reviews-intro">
 <span class="eyebrow">Avis publiés</span><h3>Ils racontent leur expérience.</h3>
 <p>Les avis envoyés apparaissent automatiquement ici et restent consultables par tous.</p>
+<div class="admin-review-tools">
+<button type="button" id="adminToggle">Espace administrateur</button>
+<div class="admin-review-panel" id="adminPanel" hidden>
+<form id="adminLoginForm">
+<label for="adminEmail">Connexion réservée à l’administrateur</label>
+<input id="adminEmail" type="email" value="gabfan936@gmail.com" autocomplete="email" required>
+<button class="btn btn-green" type="submit" id="adminLoginButton">Recevoir mon lien de connexion</button>
+</form>
+<div class="admin-review-message" id="adminMessage" role="status" aria-live="polite"></div>
+<div id="adminLogged" hidden>
+<p>Connecté en tant que <strong id="adminLoggedEmail"></strong></p>
+<button type="button" id="adminLogout" class="review-delete">Se déconnecter</button>
+</div>
+</div>
+</div>
 <div class="reviews-list" id="reviewsList" aria-live="polite"><div class="reviews-empty"><span class="empty-icon">✳</span><strong>Chargement des avis…</strong><p>Les derniers avis seront affichés ici.</p></div></div>
 </div>
 <form class="reviews-form" id="reviewForm">
@@ -158,6 +185,7 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 <footer><div class="container footer-inner"><a class="logo" href="#accueil"><span class="logo-mark"><span>✳</span></span><span>ATELIER <span style="color:var(--green)">PIXEL</span><small>CRÉATION DE SITES WEB</small></span></a><span class="copyright">© <span id="year"></span> ATELIER PIXEL · Tous droits réservés.</span><div class="footer-links"><a href="#concepts">Concepts</a><a href="#tarifs">Tarifs</a><a href="#confiance">Confiance & sécurité</a><a href="#contact">Contact</a></div></div></footer>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-box"><img id="modalImg" alt=""><div class="modal-text"><div class="modal-head"><h3 id="modalTitle"></h3><button class="close" id="closeModal" aria-label="Fermer">×</button></div><p id="modalDesc"></p><a class="btn btn-green" href="#contact" id="modalCta">Créer un site dans cet esprit ↗</a></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (() => {
  const header=document.getElementById('header'), burger=document.getElementById('burger'), nav=document.getElementById('navlinks');
@@ -192,6 +220,44 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
  const reviewStatus=document.getElementById('reviewStatus');
  const reviewSubmit=document.getElementById('reviewSubmit');
  const apiHeaders={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'};
+ const adminClient=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ let adminSession=null;
+ const adminToggle=document.getElementById('adminToggle'),adminPanel=document.getElementById('adminPanel'),adminMessage=document.getElementById('adminMessage');
+ function setAdminMessage(message,isError=false){adminMessage.textContent=message;adminMessage.classList.toggle('error',isError);}
+ function updateAdminUI(session){
+   adminSession=session&&session.user?.email?.toLowerCase()==='gabfan936@gmail.com'?session:null;
+   const logged=document.getElementById('adminLogged');
+   logged.hidden=!adminSession;
+   document.getElementById('adminLoginForm').hidden=!!adminSession;
+   document.getElementById('adminLoggedEmail').textContent=adminSession?.user?.email||'';
+   adminToggle.textContent=adminSession?'Administrateur connecté':'Espace administrateur';
+   if(adminSession) setAdminMessage('Connecté. Tu peux supprimer les avis depuis la liste.');
+   displayReviews(window.__atelierReviews||[]);
+ }
+ if(adminToggle){
+   adminToggle.addEventListener('click',()=>{adminPanel.hidden=!adminPanel.hidden;});
+   document.getElementById('adminLoginForm').addEventListener('submit',async event=>{
+     event.preventDefault();setAdminMessage('Envoi du lien de connexion…');
+     if(!adminClient){setAdminMessage('Le module de connexion ne s’est pas chargé. Actualise la page.',true);return;}
+     const email=document.getElementById('adminEmail').value.trim().toLowerCase();
+     if(email!=='gabfan936@gmail.com'){setAdminMessage('Cette adresse n’est pas autorisée.',true);return;}
+     const {error}=await adminClient.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+window.location.pathname+'#avis'}});
+     if(error){setAdminMessage('Connexion impossible : '+error.message,true);return;}
+     setAdminMessage('Lien envoyé à gabfan936@gmail.com. Ouvre le mail sur cet appareil puis clique sur le lien.');
+   });
+   document.getElementById('adminLogout').addEventListener('click',async()=>{
+     if(adminClient) await adminClient.auth.signOut();
+     updateAdminUI(null);setAdminMessage('Tu es déconnecté.');
+   });
+   if(adminClient){
+     adminClient.auth.onAuthStateChange((_event,session)=>{
+       updateAdminUI(session);
+       if(session&&session.user?.email?.toLowerCase()==='gabfan936@gmail.com') loadReviews();
+     });
+     adminClient.auth.getSession().then(({data})=>updateAdminUI(data.session));
+   }
+ }
+
  function makeEmptyReviews(title,description){
    const box=document.createElement('div');box.className='reviews-empty';
    const mark=document.createElement('span');mark.className='empty-icon';mark.textContent='✳';
@@ -200,6 +266,7 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
    box.append(mark,strong,p);return box;
  }
  function displayReviews(reviews){
+   window.__atelierReviews=reviews;
    reviewsList.replaceChildren();
    if(!reviews.length){
      reviewsList.append(makeEmptyReviews('Pas encore d’avis publié','Soyez le premier à partager votre expérience avec Atelier Pixel.'));
@@ -218,7 +285,19 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
      top.append(author,date);
      const stars=document.createElement('div');stars.className='review-stars';stars.setAttribute('aria-label',review.rating+' sur 5');stars.textContent='★'.repeat(Number(review.rating))+'☆'.repeat(5-Number(review.rating));
      const message=document.createElement('p');message.className='review-message';message.textContent=review.message;
-     card.append(top,stars,message);reviewsList.append(card);
+     card.append(top,stars,message);
+     if(adminSession){
+       const remove=document.createElement('button');remove.type='button';remove.className='review-delete';remove.textContent='Supprimer cet avis';
+       remove.addEventListener('click',async()=>{
+         if(!confirm('Supprimer définitivement cet avis ?'))return;
+         remove.disabled=true;remove.textContent='Suppression…';
+         const {error}=await adminClient.from('atelier_reviews').delete().eq('id',review.id);
+         if(error){remove.disabled=false;remove.textContent='Supprimer cet avis';setAdminMessage('Suppression impossible : '+error.message,true);return;}
+         setAdminMessage('Avis supprimé.');await loadReviews();
+       });
+       card.append(remove);
+     }
+     reviewsList.append(card);
    });
  }
  async function loadReviews(){

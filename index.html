@@ -56,17 +56,8 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 #reviewStatus.error{color:#ff9b90}
 @media(max-width:760px){.reviews-wrap{grid-template-columns:1fr}.reviews-intro,.reviews-form{padding:28px 22px}.reviews-form{border-left:0;border-top:1px solid var(--line)}.reviews-list{max-height:520px}}
 
-/* Espace administrateur des avis */
-.admin-review-tools{margin:18px 0 22px;padding:16px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025)}
-.admin-review-tools>button,.review-delete{border:1px solid var(--green);background:transparent;color:var(--green);border-radius:8px;padding:9px 13px;font:inherit;font-size:.78rem;cursor:pointer}
-.admin-review-tools>button:hover,.review-delete:hover{background:var(--green);color:#07100b}
-.admin-review-panel{margin-top:14px;display:grid;gap:10px}
-.admin-review-panel[hidden]{display:none}
-.admin-review-panel input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:#101512;color:inherit;font:inherit}
-.admin-review-panel button{justify-self:start}
-.admin-review-message{font-size:.8rem;color:var(--green);line-height:1.5}
-.admin-review-message.error{color:#ff9b90}
-.review-delete{margin-top:12px;border-color:#a64d4d;color:#ff9b90;font-size:.72rem;padding:7px 10px}
+.review-delete{margin-top:12px;border:1px solid #a64d4d;background:transparent;color:#ff9b90;border-radius:8px;padding:7px 10px;font:inherit;font-size:.72rem;cursor:pointer}
+.review-delete:hover{background:#a64d4d;color:#fff}
 </style>
 </head>
 <body>
@@ -117,21 +108,6 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 <div class="reviews-intro">
 <span class="eyebrow">Avis publiés</span><h3>Ils racontent leur expérience.</h3>
 <p>Les avis envoyés apparaissent automatiquement ici et restent consultables par tous.</p>
-<div class="admin-review-tools">
-<button type="button" id="adminToggle">Espace administrateur</button>
-<div class="admin-review-panel" id="adminPanel" hidden>
-<form id="adminLoginForm">
-<label for="adminPassword">Mot de passe administrateur</label>
-<input id="adminPassword" type="password" autocomplete="current-password" minlength="8" placeholder="Ton mot de passe" required>
-<button class="btn btn-green" type="submit" id="adminLoginButton">Se connecter</button>
-</form>
-<div class="admin-review-message" id="adminMessage" role="status" aria-live="polite"></div>
-<div id="adminLogged" hidden>
-<p>Connecté en tant que <strong id="adminLoggedEmail"></strong></p>
-<button type="button" id="adminLogout" class="review-delete">Se déconnecter</button>
-</div>
-</div>
-</div>
 <div class="reviews-list" id="reviewsList" aria-live="polite"><div class="reviews-empty"><span class="empty-icon">✳</span><strong>Chargement des avis…</strong><p>Les derniers avis seront affichés ici.</p></div></div>
 </div>
 <form class="reviews-form" id="reviewForm">
@@ -185,7 +161,7 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
 <footer><div class="container footer-inner"><a class="logo" href="#accueil"><span class="logo-mark"><span>✳</span></span><span>ATELIER <span style="color:var(--green)">PIXEL</span><small>CRÉATION DE SITES WEB</small></span></a><span class="copyright">© <span id="year"></span> ATELIER PIXEL · Tous droits réservés.</span><div class="footer-links"><a href="#concepts">Concepts</a><a href="#tarifs">Tarifs</a><a href="#confiance">Confiance & sécurité</a><a href="#contact">Contact</a></div></div></footer>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-box"><img id="modalImg" alt=""><div class="modal-text"><div class="modal-head"><h3 id="modalTitle"></h3><button class="close" id="closeModal" aria-label="Fermer">×</button></div><p id="modalDesc"></p><a class="btn btn-green" href="#contact" id="modalCta">Créer un site dans cet esprit ↗</a></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 (() => {
  const header=document.getElementById('header'), burger=document.getElementById('burger'), nav=document.getElementById('navlinks');
@@ -220,42 +196,27 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
  const reviewStatus=document.getElementById('reviewStatus');
  const reviewSubmit=document.getElementById('reviewSubmit');
  const apiHeaders={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'};
- const adminClient=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
- let adminSession=null;
- const adminToggle=document.getElementById('adminToggle'),adminPanel=document.getElementById('adminPanel'),adminMessage=document.getElementById('adminMessage');
- function setAdminMessage(message,isError=false){adminMessage.textContent=message;adminMessage.classList.toggle('error',isError);}
- function updateAdminUI(session){
-   adminSession=session&&session.user?.email?.toLowerCase()==='gabfan936@gmail.com'?session:null;
-   const logged=document.getElementById('adminLogged');
-   logged.hidden=!adminSession;
-   document.getElementById('adminLoginForm').hidden=!!adminSession;
-   document.getElementById('adminLoggedEmail').textContent=adminSession?.user?.email||'';
-   adminToggle.textContent=adminSession?'Administrateur connecté':'Espace administrateur';
-   if(adminSession) setAdminMessage('Connecté. Tu peux supprimer les avis depuis la liste.');
-   displayReviews(window.__atelierReviews||[]);
+
+ const ownReviewStorageKey='atelier_pixel_own_reviews_v1';
+ function getOwnReviewTokens(){
+   try{return JSON.parse(localStorage.getItem(ownReviewStorageKey)||'{}')||{};}catch(_){return {};}
  }
- if(adminToggle){
-   adminToggle.addEventListener('click',()=>{adminPanel.hidden=!adminPanel.hidden;});
-   document.getElementById('adminLoginForm').addEventListener('submit',async event=>{
-     event.preventDefault();setAdminMessage('Envoi du lien de connexion…');
-     if(!adminClient){setAdminMessage('Le module de connexion ne s’est pas chargé. Actualise la page.',true);return;}
-     const password=document.getElementById('adminPassword').value;
-     const {error}=await adminClient.auth.signInWithPassword({email:'gabfan936@gmail.com',password});
-     if(error){setAdminMessage('Mot de passe incorrect ou compte administrateur non configuré.',true);return;}
-     document.getElementById('adminPassword').value='';
-     setAdminMessage('Connexion réussie.');
-   });
-   document.getElementById('adminLogout').addEventListener('click',async()=>{
-     if(adminClient) await adminClient.auth.signOut();
-     updateAdminUI(null);setAdminMessage('Tu es déconnecté.');
-   });
-   if(adminClient){
-     adminClient.auth.onAuthStateChange((_event,session)=>{
-       updateAdminUI(session);
-       if(session&&session.user?.email?.toLowerCase()==='gabfan936@gmail.com') loadReviews();
-     });
-     adminClient.auth.getSession().then(({data})=>updateAdminUI(data.session));
-   }
+ function saveOwnReviewToken(id,token){
+   const tokens=getOwnReviewTokens();tokens[id]=token;
+   localStorage.setItem(ownReviewStorageKey,JSON.stringify(tokens));
+ }
+ function removeOwnReviewToken(id){
+   const tokens=getOwnReviewTokens();delete tokens[id];
+   localStorage.setItem(ownReviewStorageKey,JSON.stringify(tokens));
+ }
+ function createReviewToken(){
+   const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
+   return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+ }
+ async function hashReviewToken(token){
+   const bytes=new TextEncoder().encode(token);
+   const digest=await crypto.subtle.digest('SHA-256',bytes);
+   return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
  }
 
  function makeEmptyReviews(title,description){
@@ -286,14 +247,23 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
      const stars=document.createElement('div');stars.className='review-stars';stars.setAttribute('aria-label',review.rating+' sur 5');stars.textContent='★'.repeat(Number(review.rating))+'☆'.repeat(5-Number(review.rating));
      const message=document.createElement('p');message.className='review-message';message.textContent=review.message;
      card.append(top,stars,message);
-     if(adminSession){
-       const remove=document.createElement('button');remove.type='button';remove.className='review-delete';remove.textContent='Supprimer cet avis';
+     const ownerToken=getOwnReviewTokens()[review.id];
+     if(ownerToken){
+       const remove=document.createElement('button');remove.type='button';remove.className='review-delete';remove.textContent='Supprimer mon avis';
        remove.addEventListener('click',async()=>{
-         if(!confirm('Supprimer définitivement cet avis ?'))return;
+         if(!confirm('Supprimer votre avis définitivement ?'))return;
          remove.disabled=true;remove.textContent='Suppression…';
-         const {error}=await adminClient.from('atelier_reviews').delete().eq('id',review.id);
-         if(error){remove.disabled=false;remove.textContent='Supprimer cet avis';setAdminMessage('Suppression impossible : '+error.message,true);return;}
-         setAdminMessage('Avis supprimé.');await loadReviews();
+         try{
+           const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/delete_own_atelier_review',{method:'POST',headers:apiHeaders,body:JSON.stringify({p_review_id:review.id,p_token:ownerToken})});
+           if(!response.ok)throw new Error('La suppression a échoué ('+response.status+').');
+           const deleted=await response.json();
+           if(deleted!==true)throw new Error('Cet avis ne peut pas être supprimé depuis ce navigateur.');
+           removeOwnReviewToken(review.id);await loadReviews();
+           reviewStatus.textContent='Votre avis a bien été supprimé.';reviewStatus.className='status success';
+         }catch(error){
+           remove.disabled=false;remove.textContent='Supprimer mon avis';
+           reviewStatus.textContent=error.message;reviewStatus.className='status error';
+         }
        });
        card.append(remove);
      }
@@ -322,7 +292,9 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
    }
    reviewSubmit.disabled=true;reviewSubmit.textContent='Publication…';
    try{
-     const res=await fetch(SUPABASE_URL+'/rest/v1/atelier_reviews',{method:'POST',headers:{...apiHeaders,Prefer:'return=representation'},body:JSON.stringify({display_name,rating,message})});
+     const ownerToken=createReviewToken();
+     const owner_token_hash=await hashReviewToken(ownerToken);
+     const res=await fetch(SUPABASE_URL+'/rest/v1/atelier_reviews',{method:'POST',headers:{...apiHeaders,Prefer:'return=representation'},body:JSON.stringify({display_name,rating,message,owner_token_hash})});
      if(!res.ok){
        let detail='Erreur lors de la publication.';
        try{const payload=await res.json();detail=payload.message||payload.hint||detail;}catch(_){}
@@ -330,6 +302,7 @@ footer{padding:30px 0;border-top:1px solid var(--line);margin-top:95px}.footer-i
      }
      const inserted=await res.json();
      if(!Array.isArray(inserted)||!inserted.length)throw new Error('L’avis n’a pas été confirmé par le serveur.');
+     try{saveOwnReviewToken(inserted[0].id,ownerToken);}catch(_){throw new Error('Avis publié, mais le navigateur ne permet pas de mémoriser son droit de suppression.');}
      reviewForm.reset();await loadReviews();
      reviewStatus.textContent='Merci ! Votre avis est publié et visible par tous.';reviewStatus.className='status success';
    }catch(error){
